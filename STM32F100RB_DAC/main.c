@@ -16,13 +16,15 @@
 #define OUT_DDR			GPIOB
 #define OUT1			((1<<1) | (1<<0))	//OC1A = PB1, _OC1A = PB0
 #define OUT2			((1<<4) | (1<<3))	//OC1B = PB4, _OC1B = PB3
-#define DDS_STEPPING	(DDS_100hz)	//phase stepping for desired output frequency
+#define DDS_STEPPING1	(DDS_100hz)			//phase stepping for desired output frequency on Ch1
+#define DDS_STEPPING2	(DDS_100hz)			//phase stepping for desired output frequency on Ch2
+#define DDS_DPHASE		1000ul			//phase difference between output1 and output2.
 //#define DDS_USEPLL							//comment out if PLL is not used
 //when PLL is used, prescaler = 2:1, PCLK = 64Mhz
 //when PLL is not used, prescaler = 1:1, CLK = 8Mhz
-#define DDS_WAVEOUT()	DDS_SINE()			//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS()
+#define DDS_WAVEOUT1()	DDS_SINE(dds_ptr1)			//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS()
+#define DDS_WAVEOUT2()	DDS_SINE(dds_ptr2)			//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS()
 #define DDS_TICK		150				//dds ticks per output period - 150 ticks minimum @ 24MIPS
-#define DDS_DPHASE		1000ul			//phase difference between output1 and output2.
 
 //for debug only
 #define LED_PORT		GPIOC
@@ -61,20 +63,26 @@
 //#define DDS_200Khz		3579139413ul		//phase stepping for 200Khz, 24Mhz oscillator, 100 tick period -> stepping = (Fout * 2^32 / (24Mhz / 100)
 
 //pick the output waveform
-#define DDS_SINE()		dds_ptr = dds_sin;	//output sine wave
-#define DDS_SAWTOOTH()	dds_ptr = dds_sawtooth;	//output sawtooth wave
-#define DDS_TRIANGLE()	dds_ptr = dds_triangle;	//output triangle wave
-#define DDS_SQUARE()	dds_ptr = dds_square;	//output square wave
-#define DDS_ECG()		dds_ptr = dds_ecg;		//output ecg wave
-#define DDS_SINEABS()	dds_ptr = dds_sineabs;	//output rectified sine wave
+#define DDS_SINE(ptr)		ptr = dds_sin;	//output sine wave
+#define DDS_SAWTOOTH(ptr)	ptr = dds_sawtooth;	//output sawtooth wave
+#define DDS_TRIANGLE(ptr)	ptr = dds_triangle;	//output triangle wave
+#define DDS_SQUARE(ptr)		ptr = dds_square;	//output square wave
+#define DDS_ECG(ptr)		ptr = dds_ecg;		//output ecg wave
+#define DDS_SINEABS(ptr)	ptr = dds_sineabs;	//output rectified sine wave
 
 #define PROGMEM								//for compatability reasons (ported from AVR where program space is used to store waveform data)
 
 //global variables
-volatile uint32_t dds1_accumulator, dds2_accumulator;			//phase accumulator
-uint8_t *dds1_msb, *dds2_msb;				//points to dds_accumlator's MSB
-volatile uint16_t val1, val2;				//duty cycle, shadow variable - not actually needed for ATtiny
-const uint16_t *dds_ptr;					//wave table pointer
+//for DDS Ch1
+volatile uint32_t dds1_accumulator;			//phase accumulator
+uint8_t *dds1_msb;				//points to dds_accumlator's MSB
+volatile uint16_t val1;				//duty cycle, shadow variable - not actually needed for ATtiny
+const uint16_t *dds_ptr1;					//wave table pointer
+//for DDS Ch2
+volatile uint32_t dds2_accumulator;			//phase accumulator
+uint8_t *dds2_msb;				//points to dds_accumlator's MSB
+volatile uint16_t val2;				//duty cycle, shadow variable - not actually needed for ATtiny
+const uint16_t *dds_ptr2;					//wave table pointer
 //waveforms, 256 pints
 const uint16_t dds_sin[] PROGMEM = {
 	2048,	2098,	2148,	2198,	2248,	2297,	2347,	2396,
@@ -286,8 +294,8 @@ void dds_out(void) {
 	DAC->SWTRIGR|= (1<<0) | (1<<1);		//output on DAC1/2 - cleared by hardware
 
 	//advance the accumulators
-    dds1_accumulator += DDS_STEPPING; val1 = dds_ptr[*dds1_msb];		//advance phase accumulator + pick up the next value
-    dds2_accumulator += DDS_STEPPING; val2 = dds_ptr[*dds2_msb];		//advance phase accumulator + pick up the next value
+    dds1_accumulator += DDS_STEPPING1; val1 = dds_ptr1[*dds1_msb];		//advance phase accumulator + pick up the next value
+    dds2_accumulator += DDS_STEPPING2; val2 = dds_ptr2[*dds2_msb];		//advance phase accumulator + pick up the next value
 }
 
 //reset the dds
@@ -298,11 +306,12 @@ void dds_init(void) {
     //reset the variables
     dds1_msb = (uint8_t *) (&dds1_accumulator) + 3;	//point dds_msb to dds_accumlator's MSB
     dds2_msb = (uint8_t *) (&dds2_accumulator) + 3;	//point dds_msb to dds_accumlator's MSB
-    DDS_WAVEOUT();							//set the output waveform
+    DDS_WAVEOUT1();							//set the output waveform for CH1
+    DDS_WAVEOUT2();							//set the output waveform for Ch2
     dds1_accumulator = 0;					//reset the phase accumulator
     dds2_accumulator = dds1_accumulator + DDS_DPHASE;
-    val1 = *(dds_ptr+*dds1_msb);			//initialize the duty cycle
-    val2 = *(dds_ptr+*dds2_msb);			//initialize the duty cycle
+    val1 = dds_ptr1[+*dds1_msb];			//initialize the duty cycle
+    val2 = dds_ptr2[+*dds2_msb];			//initialize the duty cycle
 
     //set up dac - dual channel, right alighted, 12-bit
     dac_init();								//reset the dac
@@ -322,15 +331,15 @@ void dds_init(void) {
 int main(void) {
 
     mcu_init();								//reset the mcu
-    //dds_init();								//initialize the dds
+    dds_init();								//initialize the dds
     IO_OUT(LED_DDR, LED);					//led as output - debug only
 
     ei();									//enable interrupts
     while(1) {								//empty loop - execution done via interrupts
         IO_FLP(LED_PORT, LED);				//for performance measurement
         //24Mhz SystemCoreClock
-        //-O1 optimization: 1.333Mhz vs.239.9Khz -> DDS routine takes (1-239.9Khz / 1333Khz) * 24MIPS = 20MIPS
-        //-O3 optimization: 293.3Khz -
+        //-O1 optimization: 1.333Mhz vs. 239.9Khz -> DDS routine takes (1-239.9Khz / 1333Khz) * 24MIPS = 20MIPS
+        //-O3 optimization: 1.333Mhz vs. 293.3Khz -
     }
 
     return 0;
