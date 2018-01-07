@@ -18,18 +18,18 @@
 #define OUT2			((1<<4) | (1<<3))	//OC1B = PB4, _OC1B = PB3
 #define DDS_STEPPING1	(DDS_100hz)			//phase stepping for desired output frequency on Ch1
 #define DDS_STEPPING2	(DDS_100hz)			//phase stepping for desired output frequency on Ch2
-#define DDS_DPHASE		1000ul			//phase difference between output1 and output2.
-//#define DDS_USEPLL							//comment out if PLL is not used
+#define DDS_DPHASE		1000ul				//phase difference between output1 and output2.
+//#define DDS_USEPLL						//comment out if PLL is not used
 //when PLL is used, prescaler = 2:1, PCLK = 64Mhz
 //when PLL is not used, prescaler = 1:1, CLK = 8Mhz
-#define DDS_WAVEOUT1()	DDS_SINE(dds_ptr1)			//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS()
-#define DDS_WAVEOUT2()	DDS_SINE(dds_ptr2)			//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS()
-#define DDS_TICK		150				//dds ticks per output period - 150 ticks minimum @ 24MIPS
+#define DDS_WAVEOUT1()	DDS_SINE(dds_ptr1)	//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS(), _NOISE()
+#define DDS_WAVEOUT2()	DDS_SINE(dds_ptr2)	//set the output waveform. _SINE(), _SAWTOOTH(), _TRIANGLE(), _SQUARE(), _ECG(), _SINEABS(), _NOISE()
+#define DDS_TICK		150					//dds ticks per output period - 150 ticks minimum @ 24MIPS
 
 //for debug only
 #define LED_PORT		GPIOC
 #define LED_DDR			GPIOC
-#define LED				(1<<8)			//blue led on pc8, green led on pc9
+#define LED				(1<<8)				//blue led on pc8, green led on pc9
 //end hardware configuration
 
 //global defines
@@ -60,7 +60,7 @@
 #define DDS_25Khz		(DDS_100Khz / 4)	//phase stepping for 25Khz
 #define DDS_50Khz		(DDS_100Khz / 2)	//phase stepping for 50Khz
 #define DDS_100Khz		(2684354560ul)		//phase stepping for 100Khz
-//#define DDS_200Khz		3579139413ul		//phase stepping for 200Khz, 24Mhz oscillator, 100 tick period -> stepping = (Fout * 2^32 / (24Mhz / 100)
+//#define DDS_200Khz		3579139413ul	//phase stepping for 200Khz, 24Mhz oscillator, 100 tick period -> stepping = (Fout * 2^32 / (24Mhz / 100)
 
 //pick the output waveform
 #define DDS_SINE(ptr)		ptr = dds_sin;	//output sine wave
@@ -69,19 +69,20 @@
 #define DDS_SQUARE(ptr)		ptr = dds_square;	//output square wave
 #define DDS_ECG(ptr)		ptr = dds_ecg;		//output ecg wave
 #define DDS_SINEABS(ptr)	ptr = dds_sineabs;	//output rectified sine wave
+#define DDS_NOISE(ptr)		ptr = dds_noise;	//output noise
 
 #define PROGMEM								//for compatability reasons (ported from AVR where program space is used to store waveform data)
 
 //global variables
 //for DDS Ch1
 volatile uint32_t dds1_accumulator;			//phase accumulator
-uint8_t *dds1_msb;				//points to dds_accumlator's MSB
-volatile uint16_t val1;				//duty cycle, shadow variable - not actually needed for ATtiny
+uint8_t *dds1_msb;							//points to dds_accumlator's MSB
+volatile uint16_t val1;						//duty cycle, shadow variable - not actually needed for ATtiny
 const uint16_t *dds_ptr1;					//wave table pointer
 //for DDS Ch2
 volatile uint32_t dds2_accumulator;			//phase accumulator
-uint8_t *dds2_msb;				//points to dds_accumlator's MSB
-volatile uint16_t val2;				//duty cycle, shadow variable - not actually needed for ATtiny
+uint8_t *dds2_msb;							//points to dds_accumlator's MSB
+volatile uint16_t val2;						//duty cycle, shadow variable - not actually needed for ATtiny
 const uint16_t *dds_ptr2;					//wave table pointer
 //waveforms, 256 pints
 const uint16_t dds_sin[] PROGMEM = {
@@ -107,10 +108,10 @@ const uint16_t dds_sin[] PROGMEM = {
 	916,	875,	834,	794,	755,	717,	679,	643,
 	607,	572,	538,	505,	473,	441,	411,	382,
 	353,	326,	300,	275,	251,	228,	206,	185,
-	165,	147,	129,	113,	98,	84,	71,	60,
-	49,	40,	32,	25,	20,	16,	12,	11,
-	10,	11,	12,	16,	20,	25,	32,	40,
-	49,	60,	71,	84,	98,	113,	129,	147,
+	165,	147,	129,	113,	98,		84,		71,		60,
+	49,		40,		32,		25,		20,		16,		12,		11,
+	10,		11,		12,		16,		20,		25,		32,		40,
+	49,		60,		71,		84,		98,		113,	129,	147,
 	165,	185,	206,	228,	251,	275,	300,	326,
 	353,	382,	411,	441,	473,	505,	538,	572,
 	607,	643,	679,	717,	755,	794,	834,	875,
@@ -120,7 +121,7 @@ const uint16_t dds_sin[] PROGMEM = {
 };
 
 const uint16_t dds_triangle[] PROGMEM = {
-	10,	42,	74,	106,	138,	170,	202,	233,
+	10,		42,		74,		106,	138,	170,	202,	233,
 	265,	297,	329,	361,	393,	425,	457,	489,
 	521,	553,	585,	617,	648,	680,	712,	744,
 	776,	808,	840,	872,	904,	936,	968,	1000,
@@ -155,7 +156,7 @@ const uint16_t dds_triangle[] PROGMEM = {
 };
 
 const uint16_t dds_sawtooth[] PROGMEM = {
-	10,	26,	42,	58,	74,	90,	106,	122,
+	10,		26,		42,		58,		74,		90,		106,	122,
 	138,	154,	170,	186,	202,	217,	233,	249,
 	265,	281,	297,	313,	329,	345,	361,	377,
 	393,	409,	425,	441,	457,	473,	489,	505,
@@ -229,7 +230,7 @@ const uint16_t dds_ecg[]={
 	1172,	1188,	1204,	1204,	1188,	1172,	1172,	1172,	1172,	1156,	1140,	1109,	1093,	1077,	1077,	1077,
 	1093,	1093,	1077,	1045,	997,	981,	949,	918,	902,	886,	886,	870,	870,	870,	886,	886,
 	886,	886,	886,	886,	870,	854,	822,	806,	790,	790,	838,	981,	1236,	1618,	2112,	2701,
-	3306,	3799,	4070,	4054,	3736,	3163,	2462,	1745,	1093,	599,	281,	90,	10,	26,	106,	217,
+	3306,	3799,	4070,	4054,	3736,	3163,	2462,	1745,	1093,	599,	281,	90,		10,		26,		106,	217,
 	328,	456,	583,	726,	838,	918,	981,	1029,	1045,	1061,	1077,	1093,	1093,	1109,	1125,	1140,
 	1140,	1140,	1140,	1140,	1140,	1140,	1140,	1156,	1156,	1156,	1172,	1172,	1188,	1204,	1204,	1220,
 	1236,	1252,	1268,	1284,	1300,	1316,	1332,	1347,	1379,	1411,	1459,	1491,	1539,	1570,	1602,	1634,
@@ -279,7 +280,42 @@ const uint16_t dds_sineabs[]={
 	2275,	2191,	2105,	2019,	1931,	1843,	1753,	1662,
 	1570,	1477,	1383,	1289,	1193,	1097,	1000,	903,
 	805,	707,	608,	509,	410,	310,	210,	110,
+};
 
+//random noise
+const uint16_t dds_noise[]={
+	2270,	3873,	3660,	818,	1607,	3116,	391,	3884,
+	2889,	245,	1804,	124,	2581,	2730,	2353,	1215,
+	823,	2589,	2302,	961,	1883,	1331,	1538,	483,
+	514,	757,	285,	940,	2457,	2635,	3861,	845,
+	1655,	3868,	3119,	1518,	1632,	3549,	2406,	2397,
+	4047,	3409,	53,		3670,	2571,	530,	18,		258,
+	1770,	1252,	121,	1201,	3883,	826,	1324,	1441,
+	2175,	1395,	4036,	1598,	600,	2578,	2825,	267,
+	2801,	741,	877,	3006,	497,	3004,	2161,	3384,
+	1984,	1339,	3558,	2011,	2601,	1618,	2636,	3876,
+	3058,	1221,	2681,	1353,	2177,	1567,	44,		3040,
+	620,	2207,	291,	1098,	2330,	116,	3633,	699,
+	3025,	2136,	437,	3032,	3712,	2663,	2719,	820,
+	2788,	452,	718,	4063,	563,	3978,	3989,	397,
+	148,	73,		3562,	2418,	151,	3720,	1974,	2806,
+	1531,	2831,	3158,	2790,	1200,	3381,	2070,	3295,
+	2552,	1124,	2269,	3394,	1696,	1099,	596,	2758,
+	1496,	930,	3363,	294,	681,	2936,	37,		3733,
+	1175,	856,	3429,	3009,	839,	3345,	3711,	965,
+	1469,	2707,	2517,	860,	1103,	2824,	2488,	1065,
+	4035,	3162,	2071,	1887,	416,	3061,	2124,	2921,
+	2147,	2793,	1163,	1774,	790,	808,	3958,	3131,
+	1449,	1442,	434,	2769,	2364,	134,	1521,	531,
+	3913,	94,		927,	4071,	2869,	823,	4083,	1522,
+	1988,	100,	1288,	3216,	940,	3016,	2108,	2513,
+	3546,	2753,	3134,	661,	1620,	1906,	1971,	57,
+	3125,	2963,	2832,	150,	1362,	3704,	826,	1610,
+	3359,	1595,	3354,	3076,	68,		3293,	3447,	1254,
+	2116,	593,	1701,	4014,	1936,	3681,	957,	3684,
+	30,		2562,	2246,	421,	1416,	3358,	962,	905,
+	3431,	3847,	879,	2095,	623,	2579,	1827,	1015,
+	1115,	252,	2046,	2386,	3431,	647,	1121,	1053,
 };
 //dds output routine - called out by TIM7 ISR periodically
 void dds_out(void) {
@@ -287,11 +323,11 @@ void dds_out(void) {
     //IO_FLP(LED_PORT, LED);				//for debug only
 
     //update the DAC1/2
-    //DAC1Write(val1);					//output on DAC1
-    //DAC2Write(val2);					//output on DAC1
-	DAC->DHR12R1 = val1;				// & 0x0ffful;		//bound the value to [0..4095]
-	DAC->DHR12R2 = val2;				// & 0x0ffful;		//bound the value to [0..4095]
-	DAC->SWTRIGR|= (1<<0) | (1<<1);		//output on DAC1/2 - cleared by hardware
+    //DAC1Write(val1);						//output on DAC1
+    //DAC2Write(val2);						//output on DAC1
+	DAC->DHR12R1 = val1;					// & 0x0ffful;		//bound the value to [0..4095]
+	DAC->DHR12R2 = val2;					// & 0x0ffful;		//bound the value to [0..4095]
+	DAC->SWTRIGR|= (1<<0) | (1<<1);			//output on DAC1/2 - cleared by hardware
 
 	//advance the accumulators
     dds1_accumulator += DDS_STEPPING1; val1 = dds_ptr1[*dds1_msb];		//advance phase accumulator + pick up the next value
@@ -301,7 +337,7 @@ void dds_out(void) {
 //reset the dds
 void dds_init(void) {
     //reset the output pins
-    IO_OUT(OUT_DDR, OUT1 | OUT2);		//OUT1/2 as output
+    IO_OUT(OUT_DDR, OUT1 | OUT2);			//OUT1/2 as output
 
     //reset the variables
     dds1_msb = (uint8_t *) (&dds1_accumulator) + 3;	//point dds_msb to dds_accumlator's MSB
@@ -321,12 +357,11 @@ void dds_init(void) {
 
 
     //set up timer
-    tim7_init(1);						//reset tim7, prescaler 1:1
+    tim7_init(1);							//reset tim7, prescaler 1:1
     tim7_setpr(DDS_TICK);					//set the period to 100, max 0xffff
     tim7_act(dds_out);						//install user handler
 
 }
-
 
 int main(void) {
 
